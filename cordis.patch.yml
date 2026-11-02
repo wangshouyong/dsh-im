@@ -1,0 +1,4 @@
+# 专家团队 IM：侧栏「专家团队」+ Host /api/im
+- insert:
+    - id: dsh-im
+      name: 'dsh-im'

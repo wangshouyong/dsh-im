@@ -1,0 +1,83 @@
+{
+  "name": "dsh-im",
+  "version": "0.1.0",
+  "description": "DSH 专家团队 IM：多角色群聊/私聊，发言走宿主 ctx.llm 或原生 session",
+  "type": "module",
+  "main": "./dist/host/index.js",
+  "exports": {
+    ".": "./dist/host/index.js",
+    "./core": "./dist/core/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./dsh-plugin.json": "./dsh-plugin.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "lib",
+    "cordis.patch.yml",
+    "dsh-plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "multi-agent",
+    "ai-agents",
+    "im",
+    "chat"
+  ],
+  "homepage": "https://github.com/wangshouyong/dsh-im#readme",
+  "bugs": {
+    "url": "https://github.com/wangshouyong/dsh-im/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wangshouyong/dsh-im.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.build.json && vite build --config vite.dsh-client.ts && node scripts/wrap-dsh-client.mjs",
+    "typecheck": "tsc -p tsconfig.json --allowImportingTsExtensions --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify:tarball": "node scripts/verify-tarball.mjs",
+    "verify:pack": "node scripts/verify-pack.mjs",
+    "gate": "npm run typecheck && npm test && npm run build && npm run verify:tarball",
+    "golden:update": "node scripts/golden-replay.mjs",
+    "eval:memory": "node scripts/memory-eval.mjs",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run gate && npm run verify:pack",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": ">=20",
+    "@types/react": ">=18",
+    "@types/react-dom": ">=18",
+    "@vitejs/plugin-react": ">=4",
+    "typescript": ">=5",
+    "vite": ">=5",
+    "vitest": ">=2"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout"
+      ]
+    }
+  }
+}

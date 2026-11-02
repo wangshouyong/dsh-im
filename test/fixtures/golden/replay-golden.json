@@ -1,0 +1,141 @@
+{
+  "messages": [
+    {
+      "seq": 1,
+      "kind": "user",
+      "author": "你",
+      "text": "开始评审",
+      "pass": false,
+      "stale": false,
+      "basedOnSeq": null
+    },
+    {
+      "seq": 2,
+      "kind": "system",
+      "author": "系统主持",
+      "text": "本轮开始。",
+      "pass": false,
+      "stale": false,
+      "basedOnSeq": null
+    },
+    {
+      "seq": 3,
+      "kind": "persona",
+      "author": "产品经理",
+      "text": "需求缺口：缺支付失败态。",
+      "pass": false,
+      "stale": false,
+      "basedOnSeq": null
+    },
+    {
+      "seq": 4,
+      "kind": "persona",
+      "author": "架构师",
+      "text": "结构风险：重试没有幂等。",
+      "pass": false,
+      "stale": false,
+      "basedOnSeq": null
+    },
+    {
+      "seq": 5,
+      "kind": "persona",
+      "author": "测试",
+      "text": "可测性：没有失败注入。",
+      "pass": false,
+      "stale": false,
+      "basedOnSeq": null
+    },
+    {
+      "seq": 6,
+      "kind": "system",
+      "author": "系统主持",
+      "text": "详细去重汇总已写入 proj/.dsh-im/<tid>/本轮汇总.md。回到干活台让主 Agent 读这个文件即可。另一场文档请自行粘贴。",
+      "pass": false,
+      "stale": false,
+      "basedOnSeq": null
+    },
+    {
+      "seq": 7,
+      "kind": "user",
+      "author": "你",
+      "text": "@产品经理 记住：周三上线灰度",
+      "pass": false,
+      "stale": false,
+      "basedOnSeq": null
+    },
+    {
+      "seq": 8,
+      "kind": "persona",
+      "author": "产品经理",
+      "text": "收到，周三上线灰度我记下了。",
+      "pass": false,
+      "stale": false,
+      "basedOnSeq": null
+    }
+  ],
+  "facts": [
+    {
+      "kind": "decision",
+      "text": "周三上线灰度",
+      "source": "user",
+      "owner": "你"
+    }
+  ],
+  "summary": {
+    "untilSeq": 0,
+    "l1": "",
+    "l2": [
+      "- [决定] 你：周三上线灰度"
+    ],
+    "factsVersionPrefix": "facts-v1"
+  },
+  "decisions": [
+    {
+      "action": "speak",
+      "persona": 0,
+      "reason": "被点名：产品经理"
+    }
+  ],
+  "metrics": [
+    {
+      "kind": "summary",
+      "value": 0,
+      "fields": {
+        "l1Chars": 0,
+        "l2Count": 0,
+        "factsVersion": "facts-v1:811c9dc5"
+      }
+    },
+    {
+      "kind": "floor_round",
+      "value": 4,
+      "fields": {
+        "speak": 3,
+        "wait": 0,
+        "pass": 1
+      }
+    },
+    {
+      "kind": "summary",
+      "value": 0,
+      "fields": {
+        "l1Chars": 0,
+        "l2Count": 1,
+        "factsVersion": "facts-v1:4e7c13b1"
+      }
+    },
+    {
+      "kind": "floor_round",
+      "value": 1,
+      "fields": {
+        "speak": 1,
+        "wait": 0,
+        "pass": 0
+      }
+    }
+  ],
+  "rollup": {
+    "summary": 2,
+    "floor_round": 2
+  }
+}

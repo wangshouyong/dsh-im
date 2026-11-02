@@ -1,0 +1,39 @@
+name: ci
+
+# 门禁：以前全靠人手跑，谁忘了跑谁就绿。
+# 这里跑的和 `npm run gate` 是同一串（tsc → vitest → build → 打包内容校验）。
+# 活体测试（test/live-native-group.test.ts）默认 skip：需要本机 DSH 在 127.0.0.1:19387，
+# 所以 CI 只跑纯单测；活体验收仍然用 `npm run verify:native`（本机手工/后续加 runner）。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # npm ci 会跑 prepare（= build），先证明「干净 clone 能构建」——这条正是以前装不上的根因。
+      - name: Install (runs prepare → build)
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # 断言 tarball 里真有 dist/lib（防止 dist 被 .gitignore 后「打包 = 4 个文件」回归）。
+      - name: Verify tarball contents
+        run: npm run verify:tarball
