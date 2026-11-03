@@ -5,3 +5,4 @@ preview-workspace
 *.log
 .DS_Store
 lib
+*.tgz
