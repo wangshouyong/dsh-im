@@ -70,6 +70,28 @@ describe('插件 CSS 作用域隔离', () => {
     expect((css.match(/\.dsh-im-root \.dsh-im-root(?![-\w])/g) ?? []).length).toBe(0)
   })
 
+  it('@keyframes 内部不做作用域前缀（from/to 是帧选择器，不是 DOM 选择器）', () => {
+    const css = scopeCss('@keyframes fade { from { opacity: 0 } to { opacity: 1 } } .a { animation: fade 1s }')
+    expect(css).toContain('@keyframes fade { from { opacity: 0 } to { opacity: 1 } }')
+    expect(css).not.toContain('.dsh-im-root from')
+    expect(css).toContain('.dsh-im-root .a {')
+  })
+
+  it('真实 style.css 的动画帧没有被加前缀', () => {
+    const source = fs.readFileSync(new URL('../src/dev/style.css', import.meta.url), 'utf8')
+    const css = scopeCss(source)
+    expect(css).toContain('@keyframes fade-in {')
+    expect(css).toContain('@keyframes pop-in {')
+    expect(css).not.toContain('.dsh-im-root from')
+    expect(css).not.toContain('.dsh-im-root to')
+  })
+
+  it('根容器的属性选择器（.dsh-im-root[data-theme]）不会被重复加前缀', () => {
+    const css = scopeCss('.dsh-im-root[data-theme="dark"] { color: white; }')
+    expect(css).toContain('.dsh-im-root[data-theme="dark"] {')
+    expect(css).not.toContain('.dsh-im-root .dsh-im-root[')
+  })
+
   it('主按钮样式只作用于 .form 的直接子按钮（避免把关联工作区选择器染成蓝色）', () => {
     const source = fs.readFileSync(new URL('../src/dev/style.css', import.meta.url), 'utf8')
     const css = scopeCss(source)

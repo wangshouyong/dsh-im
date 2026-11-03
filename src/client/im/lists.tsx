@@ -19,17 +19,20 @@ export function SessionRow(props: {
   const peer = t.kind === 'dm' ? im.state.personas.find((p) => p.id === t.memberIds[0]) : undefined
   const kind = t.kind === 'group' ? '群' : t.kind === 'triad' ? '三人小窗' : ''
   return (
-    <div className={`row ${active ? 'on' : ''}`} onClick={() => onOpen(t)}>
+    <div className={`row ${active ? 'on' : ''}`} onClick={() => onOpen(t)} title={t.title}>
       {peer ? <Avatar persona={peer} index={index} /> : <div className={`avatar a${index % 5}`}>{t.title.slice(0, 1)}</div>}
       <div className="meta">
         <div className="name">
-          <span>{t.title}{kind ? <em className="kind">{kind}</em> : ''}</span>
+          <span className="title">{t.title}</span>
+          {kind ? <em className="kind">{kind}</em> : null}
           <span className="time">{formatListStamp(t.updatedAt)}</span>
         </div>
-        <div className="preview">
-          {t.unread > 0 && <span className="unread">{t.unread}</span>}
-          {t.kind !== 'dm' ? `${t.memberIds.length + 1} 人 · ` : ''}
-          {t.messages.at(-1)?.text ? stripLegacyReasoning(t.messages.at(-1)!.text) : '暂无消息'}
+        <div className="preview-row">
+          <span className="preview">
+            {t.kind !== 'dm' ? `${t.memberIds.length + 1} 人 · ` : ''}
+            {t.messages.at(-1)?.text ? stripLegacyReasoning(t.messages.at(-1)!.text) : '暂无消息'}
+          </span>
+          {t.unread > 0 ? <span className="unread">{t.unread > 99 ? '99+' : t.unread}</span> : null}
         </div>
       </div>
     </div>
@@ -168,10 +171,13 @@ export function ContactRow(props: {
       <Avatar persona={p} index={index} />
       <div className="meta">
         <div className="name">
-          <span>{p.name}</span>
-          <span className="time">{modelLabel}{p.post ? ' · ' + p.post : ''}</span>
+          <span className="title">{p.name}</span>
+          {p.post ? <em className="kind">{p.post}</em> : null}
+          <span className="time" title={modelLabel}>{modelLabel}</span>
         </div>
-        <div className="preview">{p.duties.join(' · ')}</div>
+        <div className="preview-row">
+          <span className="preview">{p.duties.join(' · ')}</span>
+        </div>
       </div>
     </div>
   )

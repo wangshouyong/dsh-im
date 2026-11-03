@@ -7,7 +7,15 @@ import type { FactKind, Thread, TurnTrace } from '../../core/types.ts'
 import { stripLegacyReasoning } from '../../core/text.ts'
 import { activityLabel } from '../../core/floor.ts'
 import { Avatar } from '../Avatar.tsx'
+import { IconChevronRight, IconCrown, IconMore, IconSearch } from './icons.tsx'
 import { ACTIVITIES, fmt, jumpToSourceMessage, memberChips } from './shared.tsx'
+
+/** 徽标颜色：状态 → 点。candidate 灰、进行/有效绿、失败红、派生蓝。 */
+function consensusDotClass(status: ConsensusStatus): string {
+  if (status === 'candidate') return ''
+  if (status === 'resolved' || status === 'superseded' || status === 'expired' || status === 'archived') return ''
+  return 'done'
+}
 
 export function RoundPlan(props: { im: ImService; thread: Thread }) {
   const { im, thread } = props
@@ -53,10 +61,19 @@ export function consensusStatusRank(status: ConsensusStatus): number {
   return 5
 }
 
-/** 临时布局自检：DSH 里任务板高度不对时，让用户截图就能看到真实 top/height。 */
+/** 临时布局自检：DSH 里任务板高度不对时，让用户截图就能看到真实 top/height。
+ *  默认不显示（控制台 `localStorage.setItem('dsh-im:layout-probe','1')` 后刷新才出现）。 */
 export function LayoutProbe() {
+  const [enabled] = useState(() => {
+    try {
+      return localStorage.getItem('dsh-im:layout-probe') === '1'
+    } catch {
+      return false
+    }
+  })
   const [text, setText] = useState('layout…')
   useLayoutEffect(() => {
+    if (!enabled) return
     const measure = () => {
       const rect = (selector: string): string => {
         const el = document.querySelector(selector)
@@ -70,8 +87,9 @@ export function LayoutProbe() {
     const timer = window.setInterval(measure, 1000)
     window.addEventListener('resize', measure)
     return () => { window.clearInterval(timer); window.removeEventListener('resize', measure) }
-  }, [])
-  return <span className="layout-probe" title="布局自检（临时）">{text}</span>
+  }, [enabled])
+  if (!enabled) return null
+  return <span className="layout-probe" title="布局自检（临时，localStorage dsh-im:layout-probe=0 关闭）">{text}</span>
 }
 
 export function ConsensusSection(props: { state: ConsensusState; latestFactSeq: number; messages: Thread['messages'] }) {
@@ -84,6 +102,11 @@ export function ConsensusSection(props: { state: ConsensusState; latestFactSeq: 
     ...state.derived.flatMap((cluster) => cluster.refs.map((ref) => ref.factEventSeq)),
   )
   const stale = props.latestFactSeq > maxRefFactSeq
+  /** 版本号只展示尾段指纹（`consensus-v1:5f7c813c` → `5f7c813c`）。 */
+  const versionLabel = (() => {
+    const clean = state.version.split(':').filter((part) => part && !part.includes('-')).at(-1) ?? state.version
+    return clean.slice(0, 8)
+  })()
   const sourceOf = (refs: { factEventSeq: number; sourceMessageSeq?: number | null }[]): { seqs: number[]; title: string } => {
     const seqs = [...new Set(refs.map((ref) => ref.sourceMessageSeq).filter((seq): seq is number => typeof seq === 'number'))]
     if (seqs.length === 0) return { seqs, title: '旧数据：提取时没有记录来源消息，无法回溯' }
@@ -98,12 +121,15 @@ export function ConsensusSection(props: { state: ConsensusState; latestFactSeq: 
   return (
     <div className="consensus-section">
       <div className="pane-head">
-      <div className="fact-kind">群共识（自动生成，可延迟于群事实）</div>
-      <div className="plan-foot">
-        {state.mode === 'new' ? '全部可回溯到原消息' : `来源缺口 ${state.provenance.missingFactIds.length} 条（旧数据不可回溯）`}
-        {' · '}版本 {state.version.split(':').at(-1)?.slice(0, 8)}
-        {stale ? ' · 落后于最新事实，切群/下一轮自动更新' : ''}
-      </div>
+        <div className="pane-title">
+          群共识
+          <span className="head-count">{state.clusters.filter((cluster) => cluster.lane !== 'D').length}</span>
+          {stale ? <span className="pane-busy">落后于最新事实</span> : null}
+        </div>
+        <div className="pane-sub">
+          {state.mode === 'new' ? '可回溯到原消息' : `来源缺口 ${state.provenance.missingFactIds.length} 条`}
+          {' · '}版本 {versionLabel}
+        </div>
       </div>
       <div className="pane-scroll">
       {(['A', 'B', 'C'] as const).map((lane) => {
@@ -118,19 +144,21 @@ export function ConsensusSection(props: { state: ConsensusState; latestFactSeq: 
               return (
                 <div
                   key={cluster.key}
-                  className="plan-row"
+                  className={`fact-item${source.seqs.length ? ' clickable' : ''}`}
                   title={source.title}
-                  style={source.seqs.length ? { cursor: 'pointer' } : undefined}
                   onClick={source.seqs.length ? () => jumpToSourceMessage(source.seqs[0]) : undefined}
                 >
-                  <span className={`dot ${cluster.status === 'candidate' ? '' : 'run'}`} />
-                  <span className="fact-text">{cluster.text}</span>
-                  <span className="status">
-                    {source.seqs.length
-                      ? <button type="button" className="linkish" onClick={(event) => { event.stopPropagation(); jumpToSourceMessage(source.seqs[0]) }}>来源</button>
-                      : null}
-                    {' '}{CONSENSUS_STATUS_LABEL[cluster.status]}
-                  </span>
+                  <span className={`dot ${consensusDotClass(cluster.status)}`} />
+                  <div className="fact-main">
+                    <div className="fact-title">{cluster.text}</div>
+                    <div className="fact-actions">
+                      <span className={`status-pill ${cluster.status}`}>{CONSENSUS_STATUS_LABEL[cluster.status]}</span>
+                      <span className="fact-meta">{cluster.kind}</span>
+                      {source.seqs.length
+                        ? <button type="button" className="link-btn" onClick={(event) => { event.stopPropagation(); jumpToSourceMessage(source.seqs[0]) }}>来源 #{source.seqs[0]}</button>
+                        : null}
+                    </div>
+                  </div>
                 </div>
               )
             })}
@@ -145,19 +173,20 @@ export function ConsensusSection(props: { state: ConsensusState; latestFactSeq: 
             return (
               <div
                 key={cluster.key}
-                className="plan-row"
+                className={`fact-item${source.seqs.length ? ' clickable' : ''}`}
                 title={source.title}
-                style={source.seqs.length ? { cursor: 'pointer' } : undefined}
                 onClick={source.seqs.length ? () => jumpToSourceMessage(source.seqs[0]) : undefined}
               >
                 <span className="dot run" />
-                <span className="fact-text">{cluster.text}</span>
-                <span className="status">
-                  {source.seqs.length
-                    ? <button type="button" className="linkish" onClick={(event) => { event.stopPropagation(); jumpToSourceMessage(source.seqs[0]) }}>来源</button>
-                    : null}
-                  {' '}派生
-                </span>
+                <div className="fact-main">
+                  <div className="fact-title">{cluster.text}</div>
+                  <div className="fact-actions">
+                    <span className="status-pill derived">派生任务</span>
+                    {source.seqs.length
+                      ? <button type="button" className="link-btn" onClick={(event) => { event.stopPropagation(); jumpToSourceMessage(source.seqs[0]) }}>来源 #{source.seqs[0]}</button>
+                      : null}
+                  </div>
+                </div>
               </div>
             )
           })}
@@ -190,16 +219,20 @@ export function FactsBoard(props: {
       <h2>任务板 <LayoutProbe /></h2>
       <div className="task-pane facts-pane">
       <div className="pane-head">
-      <div className="plan-foot">
-        群事实 · 即时（{facts.length} 条）；点“完成”会归档，不再注入 prompt。
-        {extractionPending ? ' · 正在抽取新事实…' : ''}
-      </div>
+        <div className="pane-title">
+          群事实
+          <span className="head-count">{facts.length}</span>
+          {extractionPending ? <span className="pane-busy">正在抽取…</span> : null}
+        </div>
+        <div className="pane-sub">即时投影；点「完成归档」后不再注入 prompt</div>
       </div>
       <div className="pane-scroll">
       {facts.length === 0 ? (
-        extractionPending
-          ? <div className="plan-foot">正在抽取群事实…（后台模型调用，通常 20–30 秒；完成后自动刷新，不用手动点）</div>
-          : <div className="plan-foot">还没有提取到事实；讨论里出现决定/待办/承诺后会自动出现在这里。</div>
+        <div className="pane-empty">
+          {extractionPending
+            ? '正在抽取群事实…（后台模型调用，通常 20–30 秒，完成后自动刷新）'
+            : '还没有提取到事实。讨论里出现决定 / 待办 / 承诺后会自动出现在这里。'}
+        </div>
       ) : groups.map((group) => (
         <div key={group.kind} className="fact-group">
           <div className="fact-kind">{FACT_KIND_LABEL[group.kind]}</div>
@@ -214,26 +247,26 @@ export function FactsBoard(props: {
             return (
               <div
                 key={fact.factId}
-                className="plan-row"
+                className={`fact-item${typeof seq === 'number' ? ' clickable' : ''}`}
                 title={sourceTitle}
-                style={typeof seq === 'number' ? { cursor: 'pointer' } : undefined}
                 onClick={typeof seq === 'number' ? () => jumpToSourceMessage(seq) : undefined}
               >
                 <span className={`dot ${fact.source === 'user' ? 'run' : ''}`} />
-                <span className="fact-text">{fact.owner ? `${fact.owner}：` : ''}{fact.text}</span>
-                <span className="status">
-                  {typeof seq === 'number'
-                    ? <button type="button" className="linkish" onClick={(event) => { event.stopPropagation(); jumpToSourceMessage(seq) }}>来源</button>
-                    : null}
-                  {' '}
-                  <button
-                    type="button"
-                    className="linkish"
-                    onClick={(event) => { event.stopPropagation(); void props.run(() => props.im.completeFact(props.thread.id, fact.factId)) }}
-                  >
-                    完成
-                  </button>
-                </span>
+                <div className="fact-main">
+                  <div className="fact-title">{fact.owner ? <b>{fact.owner}：</b> : null}{fact.text}</div>
+                  <div className="fact-actions">
+                    {typeof seq === 'number'
+                      ? <button type="button" className="link-btn" onClick={(event) => { event.stopPropagation(); jumpToSourceMessage(seq) }}>来源 #{seq}</button>
+                      : <span className="fact-meta">旧数据不可回溯</span>}
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={(event) => { event.stopPropagation(); void props.run(() => props.im.completeFact(props.thread.id, fact.factId)) }}
+                    >
+                      完成归档
+                    </button>
+                  </div>
+                </div>
               </div>
             )
           })}
@@ -243,19 +276,17 @@ export function FactsBoard(props: {
       </div>
       <div className="task-pane consensus-pane">
         {!props.im.consensusEnabled ? (
-          <div className="plan-foot">群共识已关闭（回滚开关 dsh-im:consensus=off）。</div>
+          <div className="pane-empty">群共识已关闭（回滚开关 dsh-im:consensus=off）。</div>
         ) : consensus ? (
           <ConsensusSection state={consensus} latestFactSeq={latestFactSeq} messages={props.thread.messages} />
         ) : facts.length === 0 ? (
-          <div className="plan-foot">
+          <div className="pane-empty">
             {extractionPending ? '正在抽取群事实…抽完会自动整理群共识。' : '还没有群事实，暂不需要生成群共识。'}
           </div>
         ) : (
-          <div className="plan-foot">
+          <div className="pane-empty">
             {consensusPending ? '正在整理群共识…（基于现有事实，完成后自动刷新）' : '群共识正在生成…'}
-            {props.thread.consensusError
-              ? <span style={{ color: '#c0392b' }}> 上次失败：{props.thread.consensusError}（下一条消息后自动重试）</span>
-              : null}
+            {props.thread.consensusError ? <span className="pane-error"> 上次失败：{props.thread.consensusError}（自动重试）</span> : null}
           </div>
         )}
       </div>
@@ -282,22 +313,26 @@ export function MemberPane(props: {
   return (
     <div className="pane-members" onClick={() => setMenuFor(null)}>
       <div className="member-head">
-        <h3>群成员 · {thread.memberIds.length + 1}</h3>
+        <h3>群成员 <span className="head-count">{thread.memberIds.length + 1}</span></h3>
         <div className="head-icons">
-          <button className="icon-btn" aria-label="搜索成员" onClick={(e) => { e.stopPropagation(); setShowSearch((v) => !v) }}>⌕</button>
+          <button type="button" className="icon-btn" aria-label="搜索成员" onClick={(e) => { e.stopPropagation(); setShowSearch((v) => !v) }}>
+            <IconSearch size={14} />
+          </button>
         </div>
       </div>
-      {showSearch && <input className="search" placeholder="搜索成员" value={mq} onChange={(e) => setMq(e.target.value)} />}
+      {showSearch && (
+        <input className="search member-search" placeholder="搜索成员" value={mq} onChange={(e) => setMq(e.target.value)} />
+      )}
       <div className="mcard-wrap">
-        <button type="button" className="mcard">
+        <div className="mcard static">
           <div className="avatar a3">你</div>
           <div className="mbody">
-            <div className="mname">你<span className="role">群主</span></div>
+            <div className="mname"><span>你</span><span className="role">群主</span></div>
             <div className="msub">方案负责人</div>
             <div className="msub">管理群成员与评审流程</div>
           </div>
-        </button>
-        <span className="crown" aria-hidden>♔</span>
+        </div>
+        <span className="crown" aria-label="群主"><IconCrown size={12} /></span>
       </div>
       {visible.map((m) => {
         const p = im.state.personas.find((x) => x.id === m.personaId)
@@ -314,14 +349,31 @@ export function MemberPane(props: {
             : undefined
         return (
           <div key={m.personaId} className="mcard-wrap">
-            <button type="button" className="mcard" onClick={() => onShowProfile(m.personaId)}>
+            <div
+              className="mcard"
+              role="button"
+              tabIndex={0}
+              onClick={() => onShowProfile(m.personaId)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  onShowProfile(m.personaId)
+                }
+              }}
+            >
               <Avatar persona={p} index={thread.members.indexOf(m)} />
               <div className="mbody">
-                <div className="mname">{p.name}</div>
+                <div className="mname">
+                  <span>{p.name}</span>
+                  {p.post ? <em className="kind">{p.post}</em> : null}
+                </div>
                 <div className="msub">{p.duties.join(' · ')}</div>
                 {actionText ? (
-                  <div className="msub member-action" title={(lastTrace?.steps ?? []).filter((step) => step.kind === 'tool').slice(-3).map((step) => `${traceToolLabel(step.name)}：${step.args ?? ''}`).join('\n')}>
-                    {actionText}
+                  <div
+                    className="msub member-action"
+                    title={(lastTrace?.steps ?? []).filter((step) => step.kind === 'tool').slice(-3).map((step) => `${traceToolLabel(step.name)}：${step.args ?? ''}`).join('\n')}
+                  >
+                    <span>{actionText}</span>
                     <button
                       type="button"
                       className="text-link"
@@ -337,7 +389,7 @@ export function MemberPane(props: {
                   </div>
                 )}
               </div>
-            </button>
+            </div>
             <button
               type="button"
               className="icon-btn more"
@@ -347,7 +399,7 @@ export function MemberPane(props: {
                 setMenuFor(menuFor === m.personaId ? null : m.personaId)
               }}
             >
-              ···
+              <IconMore size={14} />
             </button>
             {menuFor === m.personaId && (
               <div className="menu" onClick={(e) => e.stopPropagation()}>
@@ -429,7 +481,7 @@ export function ActivityPane(props: {
                 {tools.length ? ` · ${tools.map((step) => traceToolLabel(step.name)).slice(0, 3).join('、')}` : ''}
               </span>
             </span>
-            <span className="trace-arrow">›</span>
+            <span className="trace-arrow"><IconChevronRight size={12} /></span>
           </button>
         )
       })}

@@ -6,6 +6,7 @@ import { ImService } from '../core/im.ts'
 import { BoundModelSpeaker, defaultChair } from '../core/runtime.ts'
 import type { ModelCatalog } from '../host/models.ts'
 import { findModel } from '../host/models.ts'
+import { usePanelTheme } from '../client/theme.ts'
 import './style.css'
 
 /** dev 预览的工作区根：默认 '.'；需要绝对根时用 `?root=D:\path`（避免把预览数据写进正式工作区）。 */
@@ -51,6 +52,21 @@ function seed(im: ImService) {
   im.openDm(pm.id, projectRoot)
 }
 
+/** dev 预览也要套一层 `.dsh-im-root`：主题是挂在它上面的（DSH 里这层由插件根提供）。 */
+function Preview(props: { im: ImService; models: ModelCatalog }) {
+  const theme = usePanelTheme()
+  return (
+    <div className="dsh-im-root" data-theme={theme}>
+      <ImApp
+        im={props.im}
+        projectRoot={projectRoot}
+        models={props.models}
+        persist={(state) => saveRemoteState(state, projectRoot)}
+      />
+    </div>
+  )
+}
+
 async function boot() {
   const listed = await loadRemoteModels().catch(() => [])
   const models: ModelCatalog = { list: () => listed }
@@ -79,7 +95,7 @@ async function boot() {
   }
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <ImApp im={im} projectRoot={projectRoot} models={models} persist={(state) => saveRemoteState(state, projectRoot)} />
+      <Preview im={im} models={models} />
     </StrictMode>,
   )
 }

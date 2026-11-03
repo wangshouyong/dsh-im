@@ -5,6 +5,7 @@ import { defaultToolAllow, type DiscoveredToolGroup, type ToolGroupCatalog } fro
 import type { Activity, Persona } from '../core/types.ts'
 import type { ModelCatalog } from '../host/models.ts'
 import { Avatar } from './Avatar.tsx'
+import { IconChevronDown, IconChevronRight, IconClose } from './im/icons.tsx'
 import { ModelPicker } from './ModelPicker.tsx'
 import { readAvatarFile } from './readAvatarFile.ts'
 import { loadToolGroups, toolGroupsSnapshot } from './httpStore.ts'
@@ -130,7 +131,7 @@ export function PersonaEditor(props: {
       <div className="modal" role="dialog" aria-labelledby="persona-editor-title" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2 id="persona-editor-title">{title}</h2>
-          <button type="button" className="icon-btn" aria-label="关闭" onClick={onClose}>×</button>
+          <button type="button" className="icon-btn" aria-label="关闭" onClick={onClose}><IconClose size={14} /></button>
         </div>
         <form
           className="modal-body"
@@ -309,7 +310,7 @@ export function PersonaEditor(props: {
                         aria-label={isExpanded ? '收起' : '展开'}
                         onClick={() => setExpanded((cur) => (cur.includes(group.id) ? cur.filter((id) => id !== group.id) : [...cur, group.id]))}
                       >
-                        {isExpanded ? '▾' : '▸'}
+                        {isExpanded ? <IconChevronDown size={11} /> : <IconChevronRight size={11} />}
                       </button>
                       <label className="check tool-group-label">
                         <input

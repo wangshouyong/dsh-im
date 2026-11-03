@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { browseFolders, createWorkspace, loadWorkspaces, type FsListing, type WorkspaceOption } from '../httpStore.ts'
+import { currentPanelTheme } from '../theme.ts'
 
 /** DSH 原生工作区列表：面板内多处复用，模块级缓存一次；添加工作区后刷新所有使用方。 */
 export let workspacesPromise: Promise<WorkspaceOption[]> | null = null
@@ -152,7 +153,8 @@ export function WorkspacePicker(props: {
         </svg>
       </button>
       {open ? createPortal(
-        <div className="dsh-im-root">
+        // portal 不在主面板根节点里：自己带主题，深色下才不会退回浅色。
+        <div className="dsh-im-root" data-theme={currentPanelTheme()}>
           <div className="ws-menu" role="listbox" style={{ top: pos.top, left: pos.left, width: pos.width }}>
             <div className="ws-menu-head">工作区</div>
             {props.options.length === 0 ? (
@@ -185,7 +187,7 @@ export function WorkspacePicker(props: {
         document.body,
       ) : null}
       {adding ? createPortal(
-        <div className="dsh-im-root">
+        <div className="dsh-im-root" data-theme={currentPanelTheme()}>
           <div
             className="ws-dialog-mask"
             onMouseDown={(event) => { if (event.target === event.currentTarget) setAdding(false) }}

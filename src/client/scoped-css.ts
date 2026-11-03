@@ -17,7 +17,9 @@ export function scopeCss(source: string): string {
     .map((part) => {
       const selector = part.trim()
       if (!selector) return selector
-      if (selector === '.dsh-im-root' || selector.startsWith('.dsh-im-root ') || selector.startsWith('.dsh-im-root:') || selector.startsWith('.dsh-im-root.')) return selector
+      // `.dsh-im-root` 本身及其变体（.dsh-im-root[data-theme]、:hover、.foo）都已经是作用域根，
+      // 不能再加前缀；这里用「后面不是 -/字母数字/下划线」判断，避免 `.dsh-im-root-foo` 被误判。
+      if (/^\.dsh-im-root(?![-\w])/.test(selector)) return selector
       if (selector.startsWith('@')) return selector
       return `.dsh-im-root ${selector}`
     })
@@ -43,7 +45,11 @@ export function scopeCss(source: string): string {
         }
       }
       const body = text.slice(open + 1, close)
-      if (rawSelector.startsWith('@media') || rawSelector.startsWith('@supports') || rawSelector.startsWith('@container')) {
+      if (rawSelector.startsWith('@keyframes') || rawSelector.startsWith('@font-face') || rawSelector.startsWith('@property')) {
+        // 这些 at-rule 的「内部选择器」不是 DOM 选择器（from/to/百分比/font 描述符），
+        // 加 .dsh-im-root 前缀会让整段非法、动画/字体直接失效。
+        out += `${rawSelector} {${body}}`
+      } else if (rawSelector.startsWith('@media') || rawSelector.startsWith('@supports') || rawSelector.startsWith('@container')) {
         out += `${rawSelector} {\n${render(body)}\n}`
       } else {
         out += `${scopeList(rawSelector)} {${body}}`

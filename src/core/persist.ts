@@ -1,4 +1,4 @@
-import type { ImState } from './types.ts'
+import type { ImState, MessageKind, Thread } from './types.ts'
 import { normalizeToolAllow } from './tools.ts'
 
 export function stateRelPath(): string {
@@ -57,7 +57,7 @@ export function parseState(raw: string): ImState {
     }),
     threads: (Array.isArray(data.threads) ? data.threads : []).filter(
       (thread) => isRecord(thread) && typeof thread.id === 'string' && typeof thread.title === 'string',
-    ),
+    ).map(normalizeThreadMessages),
     memories: (Array.isArray(data.memories) ? data.memories : []).filter(
       (memory) => isRecord(memory) && typeof memory.id === 'string',
     ),
@@ -65,4 +65,34 @@ export function parseState(raw: string): ImState {
     pendingRecall: data.pendingRecall ?? null,
     lastProactiveAt: data.lastProactiveAt && typeof data.lastProactiveAt === 'object' ? data.lastProactiveAt : {},
   })
+}
+
+/**
+ * 消息 kind 收敛：只认 user / persona / system 三态。
+ *
+ * 现实里 state.json 可能被外部脚本、演示数据、别的工具写进来（已经遇到一份 `kind: 'text'` 的手工演示数据），
+ * 非标准 kind 会让界面把「你的发言」当角色发言排到左边，也会影响 prompt 里用户/角色的区分。
+ * 这里按「有没有 authorId」归一：有作者 → persona；没有作者 → user；作者名像系统 → system。
+ * 标准 kind 原样保留（幂等）。
+ */
+export function normalizeMessageKind(kind: unknown, authorId: unknown, authorName: unknown): MessageKind {
+  if (kind === 'user' || kind === 'persona' || kind === 'system') return kind
+  if (typeof authorId === 'string' && authorId) return 'persona'
+  const name = typeof authorName === 'string' ? authorName.trim() : ''
+  if (!name || name === '你' || name === '我' || name.toLowerCase() === 'user') return 'user'
+  if (/系统|主持|system|assistant/i.test(name)) return 'system'
+  return 'persona'
+}
+
+function normalizeThreadMessages(thread: Thread): Thread {
+  if (!Array.isArray(thread.messages)) return thread
+  let changed = false
+  const messages = thread.messages.map((message) => {
+    if (!isRecord(message)) return message
+    const kind = normalizeMessageKind(message.kind, message.authorId, message.authorName)
+    if (kind === message.kind) return message
+    changed = true
+    return { ...message, kind }
+  })
+  return changed ? { ...thread, messages } : thread
 }

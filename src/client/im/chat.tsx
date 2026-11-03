@@ -10,6 +10,7 @@ import { Avatar } from '../Avatar.tsx'
 import { attachmentUrl, onNativeCompat, uploadAttachment } from '../httpStore.ts'
 import { blockedAdvice } from '../../core/blocked.ts'
 import { MentionText, fmt, useNarrow } from './shared.tsx'
+import { IconAlert, IconChat, IconChevronDown, IconFile, IconImage, IconPaperclip, IconSend, IconUsers } from './icons.tsx'
 import { PersonaProfile } from './persona-profile.tsx'
 import { ActivityPane, FactsBoard, GroupRightPane, MemberPane, RoundPlan, traceToolLabel, type GroupRightTab } from './right-pane.tsx'
 import { useWorkspaces, WorkspacePicker } from './workspaces.tsx'
@@ -66,11 +67,17 @@ export function Chat(props: {
   const [activityFilter, setActivityFilter] = useState<string | undefined>(undefined)
   const [traceDetail, setTraceDetail] = useState<TurnTrace | null>(null)
   const [compatNotice, setCompatNotice] = useState<string | null>(null)
+  // 顶部「本轮暂停」状态条的详情展开（默认收起，只在需要看失败码/建议时展开）。
+  const [blockedOpen, setBlockedOpen] = useState(false)
   // 群名行内编辑：null = 不在编辑态；切群时丢弃草稿。
   const [titleDraft, setTitleDraft] = useState<string | null>(null)
   useEffect(() => {
     setTitleDraft(null)
   }, [thread.id])
+  // 换群 / 换一次中断（新的 blocked.at）时收起详情，避免把上一次的报错细节留在屏上。
+  useEffect(() => {
+    setBlockedOpen(false)
+  }, [thread.id, thread.blocked?.at])
   useEffect(() => {
     setCompatNotice(null)
     return onNativeCompat((notice) => {
@@ -202,7 +209,7 @@ export function Chat(props: {
       <section className="col-chat">
         <header className="head">
           <div className="head-left">
-            {peer ? <Avatar persona={peer} /> : <div className="avatar a2">{thread.title.slice(0, 1)}</div>}
+            {peer ? <Avatar persona={peer} /> : <div className="group-avatar" aria-hidden="true"><IconUsers size={18} /></div>}
             <div>
               {canRename && titleDraft !== null ? (
                 <input
@@ -228,14 +235,16 @@ export function Chat(props: {
                   title={canRename ? `点击改${nameLabel}` : undefined}
                   onClick={canRename ? () => setTitleDraft(thread.title) : undefined}
                 >
-                  {thread.title}{groupLike ? `（${count}）` : ''}
+                  {thread.title}
+                  {groupLike ? <span className="head-count">{count} 人</span> : null}
                 </h1>
               )}
               <div className="sub">
-                记忆仅限{thread.kind === 'dm' ? '本私聊' : '本群'}
+                <span>记忆仅限{thread.kind === 'dm' ? '本私聊' : '本群'}</span>
                 {groupLike ? (
                   <span className="inline-edit">
-                    {' · 工作区 '}
+                    <span className="dot-sep">·</span>
+                    <span>工作区</span>
                     <WorkspacePicker
                       compact
                       value={thread.projectRoot}
@@ -261,6 +270,38 @@ export function Chat(props: {
             <button type="button" onClick={() => setOverlayTab('facts')}>任务板 {groupFacts.length}</button>
             <button type="button" onClick={() => setOverlayTab('queue')}>候选 {pendingQueue}</button>
             <button type="button" onClick={() => setOverlayTab('activity')}>执行 {activityCount}</button>
+          </div>
+        ) : null}
+        {/* 本轮中断 = 当前轮状态，不是历史消息：固定在 header 下方，任何滚动位置都能看到并处理。
+            历史留痕由 resolveBlocked() 写入的系统消息负责，移出聊天流不会丢证据。 */}
+        {thread.blocked ? (
+          <div className="status-strip" role="status">
+            <span className="status-strip-icon"><IconAlert size={14} /></span>
+            <div className="status-strip-text">
+              <b>{thread.blocked.name} 调用失败</b>
+              {thread.blocked.code ? <span className="status-pill danger">{thread.blocked.code}</span> : null}
+              <span className="status-strip-msg">{thread.blocked.message}</span>
+            </div>
+            <div className="status-strip-actions">
+              <button type="button" className="primary" onClick={() => void run(() => im.resolveBlocked(thread.id, 'retry'))}>已修好，重试</button>
+              <button type="button" onClick={() => void run(() => im.resolveBlocked(thread.id, 'skip'))}>移除它，继续</button>
+              <button type="button" onClick={() => void run(() => im.pauseRound(thread.id))}>暂停本轮</button>
+              <button
+                type="button"
+                className="status-strip-toggle"
+                aria-expanded={blockedOpen}
+                onClick={() => setBlockedOpen((value) => !value)}
+              >
+                详情<IconChevronDown size={11} />
+              </button>
+            </div>
+            {blockedOpen ? (
+              <div className="status-strip-detail">
+                <div><span>失败码</span><code>{thread.blocked.code ?? '—'}</code></div>
+                <div><span>发生时间</span><code>{formatStamp(thread.blocked.at)}</code></div>
+                <div><span>建议</span><span>{blockedAdvice(thread.blocked).hint}</span></div>
+              </div>
+            ) : null}
           </div>
         ) : null}
         {compatNotice && (
@@ -307,7 +348,7 @@ export function Chat(props: {
         <div className="feed" ref={feedRef}>
           {empty && peer ? (
             <div className="hero">
-              <div className="hero-icon">💬</div>
+              <div className="hero-icon"><IconChat size={24} /></div>
               <h2>与{peer.name}开始聊天</h2>
               <p>{peer.personality}</p>
               <div className="hero-duties">
@@ -316,7 +357,7 @@ export function Chat(props: {
             </div>
           ) : empty ? (
             <div className="hero">
-              <div className="hero-icon">{thread.kind === 'group' ? '👥' : '💬'}</div>
+              <div className="hero-icon">{thread.kind === 'group' ? <IconUsers size={24} /> : <IconChat size={24} />}</div>
               <h2>{thread.kind === 'group' ? '群聊已创建' : '三人小窗已创建'}</h2>
               <p>{thread.kind === 'group'
                 ? '成员已就位。发第一条消息，或点右上角「开始评审」让专家依次发言。'
@@ -330,21 +371,6 @@ export function Chat(props: {
             </div>
           ) : (
             <>
-              {thread.blocked && (
-                <div className="card blocked-card">
-                  <div>
-                    <b>{thread.blocked.name} 调用失败</b>
-                    {thread.blocked.code ? <span className="chip warn">{thread.blocked.code}</span> : null}
-                    <div className="sub">{thread.blocked.message}</div>
-                    <div className="sub">{blockedAdvice(thread.blocked).hint}</div>
-                  </div>
-                  <div className="blocked-actions">
-                    <button onClick={() => run(() => im.resolveBlocked(thread.id, 'retry'))}>已修好，重试</button>
-                    <button onClick={() => run(() => im.resolveBlocked(thread.id, 'skip'))}>移除它，继续</button>
-                    <button onClick={() => run(() => im.pauseRound(thread.id))}>暂停本轮</button>
-                  </div>
-                </div>
-              )}
               {chatMsgs.map((m, index) => {
                 // 跨天处插一条日期分隔条：昨天的 23:55 和今天的 17:08 不会再像同一天的两个时刻。
                 const previous = index > 0 ? chatMsgs[index - 1] : undefined
@@ -370,14 +396,49 @@ export function Chat(props: {
                     </Fragment>
                   )
                 }
+                // 我的发言：标准数据是 kind 'user'；没有 authorId 的非系统消息也一定是我
+                // （兼容被外部脚本 / 演示数据写成 'text' 之类非标准 kind 的 state.json）。
+                const mine = m.kind === 'user' || !m.authorId
+                const author = mine ? undefined : im.state.personas.find((p) => p.id === m.authorId)
+                // 岗位和角色名重复时不重复显示（「产品经理 · 产品」→「产品经理」）。
+                const post = author?.post && !author.name.includes(author.post) && !author.post.includes(author.name)
+                  ? author.post
+                  : undefined
+                // 同一人连续发言（同一天、6 分钟内）合并成一组：头像和名字只出现一次，气泡间距收紧。
+                const grouped = Boolean(
+                  previous
+                  && !divider
+                  && previous.kind === m.kind
+                  && previous.authorId === m.authorId
+                  && previous.authorName === m.authorName
+                  && m.createdAt - previous.createdAt < 6 * 60_000,
+                )
+                const flags: { text: string; warn: boolean }[] = []
+                if (m.interrupted) flags.push({ text: '已被打断', warn: false })
+                if (m.stale) flags.push({ text: '基于旧版本', warn: true })
+                if (m.pass) flags.push({ text: '本轮弃权', warn: false })
+                if (m.windowReply) flags.push({ text: '按窗口回复', warn: false })
                 return (
                   <Fragment key={m.id}>
                     {divider}
-                    <div id={`msg-${m.seq ?? m.id}`} className={`msg ${m.kind === 'user' ? 'mine' : ''}`}>
-                    <Avatar persona={m.kind === 'user' ? undefined : im.state.personas.find((p) => p.id === m.authorId)} text={m.kind === 'user' ? '你' : m.authorName} />
-                    <div>
-                      <div className="who">{m.kind === 'user' ? '你' : m.authorName} · {formatStamp(m.createdAt)}</div>
+                    <div id={`msg-${m.seq ?? m.id}`} className={`msg ${mine ? 'mine' : ''}${grouped ? ' grouped' : ''}`}>
+                    {grouped ? <div className="msg-gutter" /> : (
+                      <Avatar persona={mine ? undefined : author} text={mine ? '你' : m.authorName} />
+                    )}
+                    <div className="msg-main">
+                      {grouped ? null : (
+                        <div className="who">
+                          <span className="who-name">{mine ? '你' : m.authorName}</span>
+                          {post ? <span className="who-post">{post}</span> : null}
+                          <span className="who-time">{formatStamp(m.createdAt)}</span>
+                        </div>
+                      )}
                       <div className="body">{<MentionText text={stripLegacyReasoning(m.text)} />}</div>
+                      {flags.length > 0 ? (
+                        <div className="msg-flags">
+                          {flags.map((flag) => <span key={flag.text} className={`tag${flag.warn ? ' warn' : ''}`}>{flag.text}</span>)}
+                        </div>
+                      ) : null}
                       {m.attachments?.length ? (
                         <div className="attachments">
                           {m.attachments.map((attachment) => {
@@ -392,7 +453,7 @@ export function Chat(props: {
                             }
                             return (
                               <a key={attachment.id} className="attachment-file" href={url} target="_blank" rel="noreferrer">
-                                <span className="attachment-icon">📄</span>
+                                <span className="attachment-icon"><IconFile size={14} /></span>
                                 <span className="attachment-name">{attachment.name}</span>
                                 <span className="attachment-size">{Math.max(1, Math.round(attachment.bytes / 1024))}KB</span>
                                 {attachment.modelVisible === false ? <span className="attachment-warn">模型不可见</span> : null}
@@ -401,10 +462,6 @@ export function Chat(props: {
                           })}
                         </div>
                       ) : null}
-                      {m.interrupted && <div className="tag">已被打断</div>}
-                      {m.stale && <div className="tag warn">基于旧版本</div>}
-                      {m.pass && <div className="tag">本轮弃权</div>}
-                      {m.windowReply && <div className="tag">按窗口回复</div>}
                     </div>
                     </div>
                   </Fragment>
@@ -414,12 +471,32 @@ export function Chat(props: {
           )}
         </div>
         <div className="floor">
-          {thread.speakingPersonaId
-            ? `正在发言：${im.state.personas.find((p) => p.id === thread.speakingPersonaId)?.name ?? ''}　下一位：${thread.nextHint ?? '—'}`
-            : groupLike && lastWait
-              ? `等待 ${im.state.personas.find((p) => p.id === lastWait.personaId)?.name ?? '该角色'} 处理完，再继续本轮`
-              : groupLike ? '等待发言' : ''}
-          {groupLike && <span style={{ float: 'right' }}>{done}/{thread.members.length}</span>}
+          <span className={`floor-dot${thread.speakingPersonaId ? ' live' : lastWait ? ' wait' : ''}`} />
+          <span className="floor-text">
+            {thread.speakingPersonaId ? (
+              <>
+                <b>{im.state.personas.find((p) => p.id === thread.speakingPersonaId)?.name ?? '该角色'}</b>
+                {' 正在发言'}
+                <span className="dot-sep"> · </span>
+                {'下一位 '}
+                {thread.nextHint ?? '—'}
+              </>
+            ) : groupLike && lastWait ? (
+              <>
+                {'等待 '}
+                <b>{im.state.personas.find((p) => p.id === lastWait.personaId)?.name ?? '该角色'}</b>
+                {' 处理完，再继续本轮'}
+              </>
+            ) : groupLike ? '等待发言' : '随时可以发消息'}
+          </span>
+          {groupLike && (
+            <span className="floor-progress">
+              <span className="floor-bar">
+                <i style={{ width: `${Math.round((done / Math.max(1, thread.members.length)) * 100)}%` }} />
+              </span>
+              {done}/{thread.members.length}
+            </span>
+          )}
         </div>
         <footer
           className="composer"
@@ -443,7 +520,8 @@ export function Chat(props: {
             <div className="attach-pending">
               {pendingAttachments.map((attachment) => (
                 <span key={attachment.id} className="attach-chip">
-                  {attachment.kind === 'image' ? '🖼' : '📄'} {attachment.name}
+                  {attachment.kind === 'image' ? <IconImage size={12} /> : <IconFile size={12} />}
+                  <span className="attachment-name">{attachment.name}</span>
                   <button
                     type="button"
                     onClick={() => setPendingAttachments((prev) => prev.filter((item) => item.id !== attachment.id))}
@@ -521,9 +599,11 @@ export function Chat(props: {
           />
           <div className="bar">
             <button type="button" className="attach-btn" disabled={uploading} onClick={() => fileRef.current?.click()}>
-              ＋ 附件
+              <IconPaperclip size={14} />
+              {uploading ? '上传中…' : '附件'}
             </button>
             <button type="button" onClick={sendDraft} disabled={uploading}>
+              <IconSend size={13} />
               发送
             </button>
           </div>

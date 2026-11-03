@@ -9,6 +9,7 @@ import { Avatar } from '../Avatar.tsx'
 import { activityLabel } from '../../core/floor.ts'
 import { toolGroupsSnapshot } from '../httpStore.ts'
 import { ACTIVITIES } from './shared.tsx'
+import { IconChevronRight, IconClose } from './icons.tsx'
 import { useWorkspaces, WorkspacePicker } from './workspaces.tsx'
 
 export function PersonaProfile(props: {
@@ -49,8 +50,8 @@ export function PersonaProfile(props: {
   return (
     <aside className="col-profile" onClick={() => setActOpen(false)}>
       <div className="member-head">
-        <h3>{persona.name}</h3>
-        <button className="icon-btn" aria-label="关闭资料" onClick={onClose}>×</button>
+        <h3>角色资料</h3>
+        <button className="icon-btn" aria-label="关闭资料" onClick={onClose}><IconClose size={14} /></button>
       </div>
       <div className="profile-hero">
           <Avatar persona={persona} index={im.state.personas.indexOf(persona)} size="lg" />
@@ -75,7 +76,7 @@ export function PersonaProfile(props: {
         <div className="mcard-wrap">
           <button type="button" className="row-btn" onClick={(e) => { e.stopPropagation(); setActOpen((v) => !v) }}>
             <span>{activityLabel(activity)}</span>
-            <span>›</span>
+            <span><IconChevronRight size={12} /></span>
           </button>
           {actOpen && (
             <div className="menu" onClick={(e) => e.stopPropagation()}>
@@ -137,9 +138,9 @@ export function PersonaProfile(props: {
 
       <div className="block">
         <h4>更多操作</h4>
-        <button type="button" className="row-btn" onClick={onMessage}><span>发消息</span><span>›</span></button>
-        <button type="button" className="row-btn" onClick={onEdit}><span>编辑角色</span><span>›</span></button>
-        <button type="button" className="row-btn" onClick={() => setInvite((v) => !v)}><span>拉入群 / 小窗</span><span>›</span></button>
+        <button type="button" className="row-btn" onClick={onMessage}><span>发消息</span><span><IconChevronRight size={12} /></span></button>
+        <button type="button" className="row-btn" onClick={onEdit}><span>编辑角色</span><span><IconChevronRight size={12} /></span></button>
+        <button type="button" className="row-btn" onClick={() => setInvite((v) => !v)}><span>拉入群 / 小窗</span><span><IconChevronRight size={12} /></span></button>
         {invite && (
           <div className="form">
             {picked.length !== 1 && (

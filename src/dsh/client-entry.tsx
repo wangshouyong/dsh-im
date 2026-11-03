@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ImApp } from '../client/ImApp.tsx'
 import { scopeCss } from '../client/scoped-css.ts'
 import { availablePanelHeight } from '../client/panel-size.ts'
+import { usePanelTheme } from '../client/theme.ts'
 import { httpModelTransport, httpNativeTransport, httpSink, loadNativeStatus, loadRemoteModels, loadRemoteState, loadStateRoots, loadToolGroups, nativePreference, saveRemoteState, setNativePreference, createWorkspace, formatStateRoot } from '../client/httpStore.ts'
 import type { StateRootInfo } from '../host/state-roots.ts'
 import { ImService } from '../core/im.ts'
@@ -9,6 +10,7 @@ import { BoundModelSpeaker, defaultChair } from '../core/runtime.ts'
 import type { ModelCatalog } from '../host/models.ts'
 import { findModel } from '../host/models.ts'
 import { logInfo, logWarn } from '../core/log.ts'
+import { IconFolder } from '../client/im/icons.tsx'
 import css from '../dev/style.css?raw'
 
 export const inject = ['slots', 'sessions', 'workspaces']
@@ -134,6 +136,8 @@ function TeamIcon(props: { size?: number }) {
 }
 
 function DshImPanel(props: { projectRoot?: string; closePanel?: () => void }) {
+  // 配色完全跟 DSH 的有效主题（读宿主投影的 DOM 信号），面板没有自己的主题开关。
+  const theme = usePanelTheme()
   const [projectRoot, setProjectRoot] = useState(() => normalizeRoot(savedRootOverride() || props.projectRoot || '.'))
   const [workspaces, setWorkspaces] = useState<{ title?: string; path?: string }[]>([])
   const [ready, setReady] = useState<{ im: ImService; models: ModelCatalog } | null>(null)
@@ -354,7 +358,7 @@ function DshImPanel(props: { projectRoot?: string; closePanel?: () => void }) {
 
   const rootbar = (
     <div className="dsh-im-rootbar">
-      <span className="rootbar-label">IM 数据根</span>
+      <span className="rootbar-label"><IconFolder size={12} /> 数据根</span>
       <select
         className="rootbar-select"
         value={projectRoot}
@@ -407,58 +411,60 @@ function DshImPanel(props: { projectRoot?: string; closePanel?: () => void }) {
     </div>
   )
 
-  if (error) return <div className="dsh-im-root" style={{ padding: 16 }}>{rootbar}{error}</div>
+  if (error) return <div className="dsh-im-root" data-theme={theme} style={{ padding: 0, overflow: 'auto' }}>{rootbar}<div className="state-fail">{error}</div></div>
 
   if (loadFailure) {
     const candidates = rootInfos.filter((info) => info.hasState && normalizeRoot(info.path) !== loadFailure.root)
     return (
-      <div className="dsh-im-root" style={{ padding: 16, overflow: 'auto' }}>
+      <div className="dsh-im-root" data-theme={theme} style={{ padding: 0, overflow: 'auto' }}>
         {rootbar}
-        <h2 style={{ margin: '12px 0 6px', fontSize: 15 }}>数据没加载出来（不是数据被删了）</h2>
-        <p style={{ margin: '0 0 10px', fontSize: 13, lineHeight: 1.6 }}>
+        <div className="state-fail">
+        <h2>数据没加载出来（不是数据被删了）</h2>
+        <p>
           数据根 <code>{loadFailure.root}</code> 读取失败：{loadFailure.message}
         </p>
-        <p style={{ margin: '0 0 10px', fontSize: 13, lineHeight: 1.6, opacity: 0.8 }}>
+        <p>
           常见原因：这个目录不在 DSH 工作区注册表里（宿主会拒绝读写），或者文件坏了。
           为避免再写坏数据，这里先不进入面板。下面这些数据根里还有数据，可以直接切过去。
         </p>
-        {actionError ? <p style={{ margin: '0 0 10px', fontSize: 13, color: '#c0392b' }}>{actionError}</p> : null}
+        {actionError ? <div className="alert danger">{actionError}</div> : null}
         {candidates.length ? (
-          <ul style={{ margin: '0 0 12px', paddingLeft: 18, fontSize: 13, lineHeight: 1.9 }}>
+          <ul>
             {candidates.map((info) => (
               <li key={info.path}>
                 <code>{info.path}</code> — 角色 {info.personas}、会话 {info.threads}
                 {info.updatedAt ? `，最后更新 ${new Date(info.updatedAt).toLocaleString('zh-CN', { hour12: false })}` : ''}
                 {info.registered ? '' : '（未注册）'}
-                <button type="button" style={{ marginLeft: 8 }} onClick={() => switchRoot(info.path)}>切到这个根</button>
+                <button type="button" className="link-btn" style={{ marginLeft: 8 }} onClick={() => switchRoot(info.path)}>切到这个根</button>
               </li>
             ))}
           </ul>
         ) : (
-          <p style={{ margin: '0 0 12px', fontSize: 13, opacity: 0.8 }}>
+          <p>
             没发现别的有数据的数据根。你的数据可能还在 <code>{loadFailure.root}\.dsh-im\state.json</code>，先别删它。
           </p>
         )}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="row-actions">
           <button type="button" onClick={retryLoad} disabled={actionBusy !== null}>重试</button>
           <button type="button" onClick={() => void registerCurrentRoot()} disabled={actionBusy !== null}>
             {actionBusy === 'register' ? '注册中…' : '把当前目录注册为 DSH 工作区并重试'}
           </button>
         </div>
-        <p style={{ margin: '12px 0 0', fontSize: 12, opacity: 0.6 }}>
+        <p className="hint">
           提示：数据按「DSH 工作区」分开存放（&lt;工作区&gt;/.dsh-im/state.json）。换工作区/换会话后先看一眼这个下拉里的「数据根」。
         </p>
+        </div>
       </div>
     )
   }
 
-  if (!ready) return <div className="dsh-im-root" style={{ padding: 16 }}>{rootbar}加载专家团队…</div>
+  if (!ready) return <div className="dsh-im-root" data-theme={theme} style={{ padding: 0 }}>{rootbar}<div className="state-fail">加载专家团队…</div></div>
 
   return (
-    <div ref={rootRef} className="dsh-im-root" style={{ height: '100%', width: '100%', flex: '1 1 auto', minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div ref={rootRef} className="dsh-im-root" data-theme={theme} style={{ height: '100%', width: '100%', flex: '1 1 auto', minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {rootbar}
       {persistError ? (
-        <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: '#fdecea', color: '#a12b1f', fontSize: 12, borderBottom: '1px solid #f5c6c0' }}>
+        <div className="alert danger">
           <span>这轮修改没存进磁盘：{persistError}</span>
           <button type="button" onClick={() => void retrySave()} disabled={actionBusy === 'save'}>
             {actionBusy === 'save' ? '保存中…' : '重试保存'}

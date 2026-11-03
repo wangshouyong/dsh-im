@@ -2,6 +2,8 @@ import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ModelOption } from '../host/models.ts'
+import { IconChevronDown } from './im/icons.tsx'
+import { currentPanelTheme } from './theme.ts'
 
 /** 下拉菜单最大高度：超过就滚动，不再被模型数量撑长。 */
 const MENU_MAX_HEIGHT = 320
@@ -149,10 +151,11 @@ export function ModelPicker(props: {
           {selected ? selected.label : placeholder}
         </span>
         {selected && <span className="model-picker-provider">{selected.provider}</span>}
-        <span className="model-picker-caret" aria-hidden="true">▾</span>
+        <span className="model-picker-caret" aria-hidden="true"><IconChevronDown size={11} /></span>
       </button>
       {open && rect && createPortal(
-        <div className="dsh-im-root">
+        // portal 挂在 body 下，不在主面板根节点里：必须自己带上当前主题，否则深色下会变回浅色。
+        <div className="dsh-im-root" data-theme={currentPanelTheme()}>
           <div
             ref={menuRef}
             className="model-picker-menu"
