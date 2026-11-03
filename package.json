@@ -1,5 +1,5 @@
 {
-  "name": "dsh-im",
+  "name": "@dabuliu_wsy/dsh-im",
   "version": "0.2.0",
   "description": "DSH 专家团队 IM：多角色群聊/私聊，发言走宿主 ctx.llm 或原生 session",
   "type": "module",
@@ -79,5 +79,8 @@
         "@deepseek-ai/dsh-client-ui-layout"
       ]
     }
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

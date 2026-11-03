@@ -5,7 +5,7 @@
 
 `版本 0.2.0` · `Node ≥ 20` · `MIT` · **开发中**（数据格式与接口仍可能变化）
 
-> 名称说明：仓库与品牌已更名为 **dsh-roundtable**；内部包名与数据目录暂保留 `dsh-im`（`.dsh-im/`、`DSH_IM_*` 环境变量），以兼容现有数据和已装配置。
+> 名称说明：仓库与品牌名为 **dsh-roundtable**；npm 包名是带 scope 的 `@dabuliu_wsy/dsh-im`，**插件 id 与数据目录仍是 `dsh-im`**（`.dsh-im/`、`DSH_IM_*` 环境变量），以兼容现有数据和已装配置。
 
 ## 这是什么
 
@@ -95,9 +95,14 @@ allowBuilds:
 
 这条 key 里的 commit 哈希要跟报错里的一致（换版本会变）。如果你不想碰 pnpm 配置，用方式一或方式二。
 
-### 从 npm 安装
+### 方式四：从 npm 安装（已发布）
 
-**尚未发布到 npm**（发布后更新到这里）。当前请用上面三种方式。
+```sh
+dsh plugin --profile desktop add @dabuliu_wsy/dsh-im
+```
+
+npm 包名是 `@dabuliu_wsy/dsh-im`（scope 必填），插件 id 与数据目录仍是 `dsh-im`。
+发布前会跑 `npm run gate` + `npm run verify:pack`（产物齐全、无开发材料、manifest 与版本一致）。
 
 ## 配置
 

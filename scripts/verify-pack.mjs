@@ -77,8 +77,10 @@ for (const prefix of FORBIDDEN_PREFIXES) {
 try {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
   const manifest = JSON.parse(readFileSync(new URL('../dsh-plugin.json', import.meta.url), 'utf8'))
-  if (manifest.id !== pkg.name) problems.push(`dsh-plugin.json id(${manifest.id}) 与 package.name(${pkg.name}) 不一致`)
-  if (manifest.name !== pkg.name) problems.push(`dsh-plugin.json name(${manifest.name}) 与 package.name(${pkg.name}) 不一致`)
+  // 包名允许带 npm scope（@scope/dsh-im），插件身份仍是裸名 dsh-im
+  const bareName = String(pkg.name).includes('/') ? String(pkg.name).split('/').pop() : String(pkg.name)
+  if (manifest.id !== bareName) problems.push(`dsh-plugin.json id(${manifest.id}) 与包名裸名(${bareName}) 不一致`)
+  if (manifest.name !== bareName) problems.push(`dsh-plugin.json name(${manifest.name}) 与包名裸名(${bareName}) 不一致`)
   if (manifest.version !== pkg.version) problems.push(`版本号不一致：manifest ${manifest.version} / package ${pkg.version}`)
   if (!manifest.facets?.host?.entry) problems.push('dsh-plugin.json 缺少 facets.host.entry')
   if (pkg.private === true) problems.push('package.json 仍是 private:true，不能发布')
