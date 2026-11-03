@@ -1,4 +1,4 @@
-# dsh-im · 专家团队
+# dsh-roundtable · 专家团队
 
 > DSH（DeepSeek Harness）插件：把多个角色拉进同一个群或私聊，让它们各自带着人设、岗位和工具协作。
 > 模型与调用全部走宿主 `ctx.llm`（或原生 session），插件不直连任何网关、不保存任何密钥。
@@ -45,8 +45,8 @@
 ### 方式一：从源码接入（推荐，当前唯一可验证方式）
 
 ```sh
-git clone https://github.com/wangshouyong/dsh-im.git
-cd dsh-im
+git clone https://github.com/wangshouyong/dsh-roundtable.git
+cd dsh-roundtable
 npm install
 npm run build
 dsh plugin --profile desktop add ./
@@ -65,7 +65,7 @@ npm run gate    # 提交前门禁：typecheck + 测试 + build + 打包内容校
 
 ### 方式二：从 Release 包安装
 
-在 [Releases](https://github.com/wangshouyong/dsh-im/releases) 下载对应版本的构建包（含 `dist/`、`lib/client.js`、`cordis.patch.yml`、`dsh-plugin.json`），解压后：
+在 [Releases](https://github.com/wangshouyong/dsh-roundtable/releases) 下载对应版本的构建包（含 `dist/`、`lib/client.js`、`cordis.patch.yml`、`dsh-plugin.json`），解压后：
 
 ```sh
 dsh plugin --profile desktop add <解压后的目录>

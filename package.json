@@ -29,14 +29,14 @@
     "im",
     "chat"
   ],
-  "homepage": "https://github.com/wangshouyong/dsh-im#readme",
+  "homepage": "https://github.com/wangshouyong/dsh-roundtable#readme",
   "bugs": {
-    "url": "https://github.com/wangshouyong/dsh-im/issues"
+    "url": "https://github.com/wangshouyong/dsh-roundtable/issues"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wangshouyong/dsh-im.git"
+    "url": "https://github.com/wangshouyong/dsh-roundtable.git"
   },
   "engines": {
     "node": ">=20"
