@@ -48,7 +48,7 @@
 
 ## 安装
 
-### 方式一：从源码接入（推荐，当前唯一可验证方式）
+### 方式一：从源码接入（最稳，推荐）
 
 ```sh
 git clone https://github.com/wangshouyong/dsh-roundtable.git
@@ -77,9 +77,27 @@ npm run gate    # 提交前门禁：typecheck + 测试 + build + 打包内容校
 dsh plugin --profile desktop add <解压后的目录>
 ```
 
+### 方式三：直接用 git 地址安装（需要一步 allowBuilds）
+
+```sh
+dsh plugin --profile desktop add git+https://github.com/wangshouyong/dsh-roundtable.git
+```
+
+首次会失败并打印 `ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED`：pnpm 默认不允许 git 包执行构建脚本，
+而本插件要靠 `prepare` / `prepack` 构建 `dist/` 与 `lib/client.js`。
+
+把报错里那一行 key 原样加到 **profile** 的 `pnpm-workspace.yaml`（例如 `~/.dsh/profiles/desktop/pnpm-workspace.yaml`）再重跑：
+
+```yaml
+allowBuilds:
+  'dsh-im@https://codeload.github.com/wangshouyong/dsh-roundtable/tar.gz/<commit-hash>': true
+```
+
+这条 key 里的 commit 哈希要跟报错里的一致（换版本会变）。如果你不想碰 pnpm 配置，用方式一或方式二。
+
 ### 从 npm 安装
 
-**尚未发布到 npm**（发布后更新到这里）。当前请用上面两种方式。
+**尚未发布到 npm**（发布后更新到这里）。当前请用上面三种方式。
 
 ## 配置
 
