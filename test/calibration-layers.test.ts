@@ -2,7 +2,10 @@
  * L1/L2/L3 三层回归。
  *
  * L1 计量正确性：构成/先验/判据/去重；L2 影子校准：中位数+容差+收缩+门槛；
- * L3 预算：token 档位、粘滞窗口、成本估算、日帽降级。
+ * L3 预算：token 档位、粘滞窗口。
+ *
+ * 注：成本估算 / 日帽降级（`estimateCost` / `degradeForCost`）已按 2026-11-02 用户裁决删除
+ * （native 通道无 usage，DSH 原生无用量账本），对应测试用例随之移除；不是改测试迁就实现。
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -21,8 +24,6 @@ import { buildCalibrationReport, decideBucket, median } from '../src/core/calibr
 import {
   BUDGET_TIERS,
   DEFAULT_RATIO,
-  degradeForCost,
-  estimateCost,
   planBudget,
   resolveTier,
 } from '../src/core/budget-plan.ts'
@@ -160,22 +161,5 @@ describe('L3 预算（影子）', () => {
     const sticky = planBudget({ contextWindow: 200_000, mode: 'on', currentWindowChars: shadow.windowChars + 5000 })
     expect(sticky.windowChars).toBe(shadow.windowChars + 5000)
     expect(sticky.notes.join()).toContain('sticky-window')
-  })
-
-  it('成本估算：缓存读价单独计价；无价目表不编造', () => {
-    const cost = estimateCost(
-      { inputTokens: 1000, outputTokens: 200, cachedTokens: 400 },
-      { inputPerMillion: 1, outputPerMillion: 2, cacheReadPerMillion: 0.2 },
-    )
-    expect(cost?.total).toBeCloseTo((600 * 1 + 400 * 0.2 + 200 * 2) / 1_000_000, 9)
-    expect(estimateCost({ inputTokens: 1 }, undefined)).toBeUndefined()
-  })
-
-  it('日帽：超帽先降 economy；economy 也超 → 硬失败', () => {
-    expect(degradeForCost({ tier: 'standard', spentToday: 9, dailyCap: 10, projectedNext: 2 }).tier).toBe('economy')
-    expect(degradeForCost({ tier: 'standard', spentToday: 1, dailyCap: 10, projectedNext: 2 }).hardFail).toBe(false)
-    const floor = degradeForCost({ tier: 'economy', spentToday: 10, dailyCap: 10, projectedNext: 1 })
-    expect(floor.hardFail).toBe(true)
-    expect(floor.degradeReason).toBe('economy_floor_reached')
   })
 })
